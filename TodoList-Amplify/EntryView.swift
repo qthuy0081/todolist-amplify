@@ -7,7 +7,9 @@
 //
 
 import SwiftUI
-
+import AWSMobileClient
+import Amplify
+import SafariServices
 struct EntryView: View {
     var body: some View {
         NavigationView {
@@ -40,7 +42,7 @@ struct EntryView_Previews: PreviewProvider {
 struct Home : View {
     
     @State var index = 0
-    
+    @State var showWebView = false
     var body : some View{
         
         VStack{
@@ -125,9 +127,10 @@ struct Home : View {
             .padding(.top, 10)
             
             HStack{
-                
+            
                 Button(action: {
-                    
+                   // self.signInWithFB()
+                    self.showWebView = true
                 }) {
                     
                     Image("fb")
@@ -135,7 +138,9 @@ struct Home : View {
                         .padding()
                     
                 }.background(Color.white)
-                .clipShape(Circle())
+                    .clipShape(Circle()).sheet(isPresented:$showWebView , content: {
+                        SafariView(url:URL(string: "https://todolistamplify2be342c0-2be342c0-dev.auth.ap-southeast-1.amazoncognito.com/login?response_type=code&client_id=5q44dtmqp13398c5cerneigo50&redirect_uri=todolist://")!)
+                    })
                 
                 Button(action: {
                     
@@ -154,4 +159,30 @@ struct Home : View {
         }
         .padding()
     }
+    func signInWithFB() {
+        
+        AWSMobileClient.default().federatedSignIn(providerName: IdentityProvider.facebook.rawValue, token: "", completionHandler: {
+            (userState, error) in
+            if let error = error as? AWSMobileClientError {
+                print(error.localizedDescription)
+            }
+            if let userState = userState {
+                print("Status: \(userState.rawValue)")
+            }
+        })
+       
+    }
+}
+struct SafariView: UIViewControllerRepresentable {
+
+    let url: URL
+
+    func makeUIViewController(context: UIViewControllerRepresentableContext<SafariView>) -> SFSafariViewController {
+        return SFSafariViewController(url: url)
+    }
+
+    func updateUIViewController(_ uiViewController: SFSafariViewController, context: UIViewControllerRepresentableContext<SafariView>) {
+
+    }
+
 }

@@ -8,7 +8,7 @@
 
 import UIKit
 import SwiftUI
-
+import AWSMobileClient
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
@@ -22,10 +22,28 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Create the SwiftUI view that provides the window contents.
         let rootView = RootView()
         let settings = UserSettings()
+        AWSMobileClient.default().initialize { (userState, error) in
+               guard error == nil else {
+                   print("Error initializing AWSMobileClient. Error: \(error!.localizedDescription)")
+                   return
+               }
+               guard let userState = userState else {
+                   print("userState is unexpectedly empty initializing AWSMobileClient")
+                   return
+               }
+        switch userState {
+        case .signedIn:
+            settings.isLogged = true
+        default:
+            settings.isLogged = false
+        }
+               print("AWSMobileClient initialized, userstate: \(userState)")
+           }
         // Use a UIHostingController as window root view controller.
+        let obs = observer()
         if let windowScene = scene as? UIWindowScene {
             let window = UIWindow(windowScene: windowScene)
-            window.rootViewController = UIHostingController(rootView: rootView.environmentObject(settings))
+            window.rootViewController = UIHostingController(rootView: rootView.environmentObject(settings).environmentObject(obs))
             self.window = window
             window.makeKeyAndVisible()
         }

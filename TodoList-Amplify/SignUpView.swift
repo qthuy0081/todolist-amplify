@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import AWSMobileClient
 
 struct SignUpView: View {
     @State var username = ""
@@ -18,6 +19,9 @@ struct SignUpView: View {
     @State var alert = true
     @State var error = ""
     @State var goToVerify = false
+    @State var showingAlert = false
+    @State var alertMess = ""
+    @EnvironmentObject var settings: UserSettings
     var body : some View{
             VStack{
                        
@@ -104,7 +108,7 @@ struct SignUpView: View {
                     EmptyView()
                 })
                        Button(action: {
-                        self.goToVerify = true
+                        self.signup()
                        }) {
                            
                            Text("SIGNUP")
@@ -120,12 +124,64 @@ struct SignUpView: View {
                        .cornerRadius(8)
                        .offset(y: -40)
                        .padding(.bottom, -40)
-                       .shadow(radius: 15)
+                        .shadow(radius: 15).alert(isPresented: self.$showingAlert, content: {
+                            Alert(title: Text("Error"), message: Text(self.alertMess), dismissButton: .default(Text("Try again")))
+                        })
                          
                    }
         
         
     }
+    func signupHandler(signUpResult: SignUpResult?, error: Error?) {
+        if let error = error as? AWSMobileClientError {
+            switch(error) {
+            case .usernameExists(let message):
+                print(message)
+                self.alertMess = message
+                self.showingAlert = true
+            default:
+                break
+            }
+        
+            print("There's an error on signup: \(error.localizedDescription), \(error)")
+        }
+        guard let signUpResult = signUpResult else {
+            return
+        }
+        switch(signUpResult.signUpConfirmationState) {
+        case .confirmed:
+            print("User is signed up and confirmed.")
+            DispatchQueue.main.async {
+                self.settings.isLogged = true
+            }
+            
+            
+        case .unconfirmed:
+           print("Confirmation code sent via \(signUpResult.codeDeliveryDetails!.deliveryMedium) to: \(signUpResult.codeDeliveryDetails!.destination!)")
+           DispatchQueue.main.async {
+                self.goToVerify = true
+                self.settings.username = self.username
+           }
+             
+            
+        case .unknown:
+            print("Unexpected case")
+        }
+    }
+    func signup() {
+       
+        if(self.mail == "" || self.username == "" || self.pass == "" || self.pass != repass){
+            print("\(self.mail) \(self.username) \(self.pass)")
+            
+            return
+        }
+      
+        AWSMobileClient.default().signUp(username: self.username,
+                                         password: self.pass,
+                                         userAttributes: ["email" : self.mail],
+                                                       completionHandler: signupHandler);
+    }
+
 }
 
 struct SignUpView_Previews: PreviewProvider {

@@ -7,12 +7,15 @@
 //
 
 import SwiftUI
-
+import AWSMobileClient
 struct LoginView: View {
-    @State var mail = ""
+    @State var username = ""
     @State var pass = ""
     @State var visible = false
+    @State var showingAlert = false
+    @State var alertMess = ""
     @EnvironmentObject var settings: UserSettings
+    
     var body : some View{
     
         VStack{
@@ -23,7 +26,7 @@ struct LoginView: View {
                     
                     Image(systemName: "person")
                         .foregroundColor(.black)
-                    TextField("Enter Username", text: self.$mail)
+                    TextField("Enter Username", text: self.$username)
                     
                 }.padding(.vertical, 20)
                 
@@ -64,7 +67,7 @@ struct LoginView: View {
             
             
             Button(action: {
-                
+                self.login()
             }) {
                 
                 Text("LOGIN")
@@ -80,10 +83,47 @@ struct LoginView: View {
             .cornerRadius(8)
             .offset(y: -40)
             .padding(.bottom, -40)
-            .shadow(radius: 15)
+                .shadow(radius: 15).alert(isPresented: self.$showingAlert, content: {
+                    Alert(title: Text("Error"), message: Text(self.alertMess), dismissButton: .default(Text("Try again")))
+                })
         }
         
     }
+    
+    func login() {
+        AWSMobileClient.default().signIn(username: self.username, password: self.pass) {
+                          (signInResult, error) in
+                              if let error = error  {
+                                  print("There's an error : \(error.localizedDescription)")
+                                  print(error)
+                                 self.showingAlert = true
+                                self.alertMess = "Incorrect username or password"
+                                  return
+                              }
+                          
+                              guard let signInResult = signInResult else {
+                                  return
+                              }
+                          
+                              switch (signInResult.signInState) {
+                              case .signedIn:
+                                  print("User is signed in.")
+                                  
+                                  self.settings.isLogged = true
+                                  
+                              case .newPasswordRequired:
+                                DispatchQueue.main.async {
+                                    self.settings.isLogged = true
+                                }
+
+                                  print("User needs a new password.")
+                              default:
+                               //self.showingAlert = true
+                                  print("Sign In needs info which is not et supported.")
+                              }
+                      }
+    }
+    
 }
 
 struct LoginView_Previews: PreviewProvider {
